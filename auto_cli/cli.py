@@ -60,14 +60,15 @@ def register_command(
     REGISTERED_COMMANDS[command_name] = function
 
 
-def register_cli(name: str, location: Path) -> None:
+def register_app(name: str, location: Path) -> None:
     with Configuration() as config:
-        config.register_cli(name, location)
+        # TODO(joris): check for existance of ac file
+        config.register_app(name, location)
 
 
-def run_command(cli: str, command: List[str]) -> None:
+def run_command(app: str, command: List[str]) -> None:
     with Configuration() as config:
-        location = config.get_cli_location(cli)
+        location = config.get_app_location(app)
         ac_file = location / "auto_cli.py"
         if not ac_file.exists():
             raise RuntimeError(
@@ -83,8 +84,8 @@ def run() -> None:
     if len(sys.argv) < 3:
         # TODO(joris): Add good error messages
         raise ValueError("")
-    cli = sys.argv[1]
-    run_command(cli, sys.argv[2:])
+    app = sys.argv[1]
+    run_command(app, sys.argv[2:])
 
 
 class Configuration:
@@ -93,22 +94,22 @@ class Configuration:
             with config_path.open() as fp:
                 self.config = json.load(fp)
         else:
-            self.config = {"clis": {}}
+            self.config = {"apps": {}}
         self._config_path = config_path
         self._dirty = False
 
-    def register_cli(self, name: str, location: Path) -> None:
+    def register_app(self, name: str, location: Path) -> None:
         if " " in name:
-            raise ValueError("Spaces are not allowed in the cli name")
+            raise ValueError("Spaces are not allowed in the app name")
 
-        self.config["clis"][name] = {"location": str(location.resolve())}
+        self.config["apps"][name] = {"location": str(location.resolve())}
         self._dirty = True
 
-    def get_cli_location(self, name: str) -> Path:
-        location = self.config["clis"].get(name)
+    def get_app_location(self, name: str) -> Path:
+        location = self.config["apps"].get(name)
         if location is None:
             # TODO(joris): "Did you mean?", "You can register..."
-            raise ValueError(f"Unknown cli '{name}'.")
+            raise ValueError(f"Unknown app '{name}'.")
         return Path(location)
 
     def __enter__(self) -> "Configuration":
