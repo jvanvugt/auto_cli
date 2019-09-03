@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 
 
 setup(
@@ -12,4 +12,5 @@ setup(
     url="https://github.com/jvanvugt/auto_cli",
     keywords=["cli", "command", "line", "interface"],
     classifiers=[],
+    entry_points={"console_scripts": ["ac=auto_cli.cli:run"]},
 )
