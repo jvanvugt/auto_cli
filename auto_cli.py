@@ -1,8 +1,5 @@
 import auto_cli
 
 
-def hw():
-    return "Hello world!"
-
-
-auto_cli.register_command(hw)
+auto_cli.register_command("auto_cli.cli.apps")
+auto_cli.register_command("auto_cli.cli.register_app")
