@@ -79,13 +79,15 @@ class _Configuration:
     """Interface for interacting with auto_cli's configuration"""
 
     def __init__(self, config_path: Path = CONFIG_FILE):
+        self._dirty = False
         if config_path.exists():
             with config_path.open() as fp:
                 self.config = json.load(fp)
         else:
-            self.config = {"apps": {}}
+            # By default register auto_cli itself
+            self.config = {"apps": {"cli": str(Path(__file__).parent.parent)}}
+            self._dirty = True
         self._config_path = config_path
-        self._dirty = False
 
     def register_app(self, name: str, location: Optional[Path]) -> None:
         """Register an app called `name` located at `location`"""
