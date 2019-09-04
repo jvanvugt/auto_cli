@@ -10,34 +10,13 @@ from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
 CONFIG_FILE = Path("~/.auto_cli").expanduser()
 REGISTERED_COMMANDS: Dict[str, Callable] = {}
 
-
-def create_parser(function: Callable) -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description=f"{function.__name__}: {function.__doc__}"
-    )
-    signature = inspect.signature(function)
-
-    for param_name, parameter in signature.parameters.items():
-        required = not _has_default(parameter)
-        default = parameter.default if _has_default(parameter) else None
-        type_ = _get_param_type(parameter.annotation, param_name, function)
-
-        # TODO(joris): Deal with List, Tuple
-        parser.add_argument(
-            f"--{param_name}", type=type_, required=required, default=default
-        )
-        # TODO(joris): parse documentation of param for help
-
-    return parser
-
-
 ReturnType = TypeVar("ReturnType")
 
 
 def run_func_with_argv(
     function: Callable[..., ReturnType], argv: List[str]
 ) -> ReturnType:
-    parser = create_parser(function)
+    parser = _create_parser(function)
     args = parser.parse_args(argv)
     retval = function(**vars(args))
     return retval
@@ -65,21 +44,24 @@ def register_command(
 
 
 def register_app(name: str, location: Optional[Path] = None) -> None:
+    """Register an app with auto_cli"""
     with _Configuration() as config:
         config.register_app(name, location)
 
 
-def run_command(app: str, command: List[str]) -> None:
+def run_command(app: str, argv: List[str]) -> None:
     """Run a command in app"""
     _load_app(app)
-    command, *argv = command
+    if len(argv) == 0:
+        _print_and_quit(f"No command given. Available commands:\n{_command_help()}")
+    command, *argv = argv
     function = REGISTERED_COMMANDS[command]
     run_func_with_argv_and_print(function, argv)
 
 
 def run() -> None:
     """Main entrypoint for auto_cli, run an app and command based on sys.argv"""
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 2:
         _print_and_quit(
             "Did not understand command.\nUsage: az <app> <command> [paramaters]"
         )
@@ -88,6 +70,7 @@ def run() -> None:
 
 
 def apps() -> List[str]:
+    """Get all registered apps"""
     with _Configuration() as config:
         return config.get_apps()
 
@@ -146,6 +129,26 @@ class _Configuration:
                 json.dump(self.config, fp, indent=4, sort_keys=True)
 
 
+def _create_parser(function: Callable) -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description=f"{function.__name__}: {function.__doc__}"
+    )
+    signature = inspect.signature(function)
+
+    for param_name, parameter in signature.parameters.items():
+        required = not _has_default(parameter)
+        default = parameter.default if _has_default(parameter) else None
+        type_ = _get_param_type(parameter.annotation, param_name, function)
+
+        # TODO(joris): Deal with List, Tuple
+        parser.add_argument(
+            f"--{param_name}", type=type_, required=required, default=default
+        )
+        # TODO(joris): parse documentation of param for help
+
+    return parser
+
+
 def _print_and_quit(message: str) -> None:
     """Write message to sys.stdout and quit with exit code 1"""
     print(_make_red("Error:"), message)
@@ -188,6 +191,20 @@ def _load_app(name: str) -> None:
     with _Configuration() as config:
         ac_code = config.get_app_ac_content(name)
     exec(ac_code)
+
+
+def _command_help() -> str:
+    longest_name = max(map(len, REGISTERED_COMMANDS))
+    return "\n".join(
+        f"{name.ljust(longest_name)}{_function_help(function)}"
+        for name, function in REGISTERED_COMMANDS.items()
+    )
+
+
+def _function_help(function) -> str:
+    if function.__doc__ is not None:
+        return "    " + function.__doc__
+    return ""
 
 
 def _make_red(text: str) -> str:
