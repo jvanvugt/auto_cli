@@ -63,7 +63,7 @@ def run() -> None:
     """Main entrypoint for auto_cli, run an app and command based on sys.argv"""
     if len(sys.argv) < 2:
         _print_and_quit(
-            "Did not understand command.\nUsage: az <app> <command> [paramaters]"
+            "Did not understand command.\nUsage: ac <app> <command> [paramaters]"
         )
     app = sys.argv[1]
     run_command(app, sys.argv[2:])
