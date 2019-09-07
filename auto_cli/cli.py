@@ -4,8 +4,7 @@ import inspect
 import json
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
-
+from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar, Union
 
 CONFIG_FILE = Path("~/.auto_cli").expanduser()
 REGISTERED_COMMANDS: Dict[str, Callable] = {}
@@ -13,12 +12,28 @@ REGISTERED_COMMANDS: Dict[str, Callable] = {}
 ReturnType = TypeVar("ReturnType")
 
 
+class _ArgumentParser(argparse.ArgumentParser):
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.post_processing: Dict[str, Callable] = {}
+
+    def parse_args(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        args = super().parse_args(*args, **kwargs)
+        args_as_dict = vars(args)
+        for param_name, transform_func in self.post_processing.items():
+            args_as_dict[param_name] = transform_func(args_as_dict[param_name])
+        return args_as_dict
+
+    def add_param_transformer(self, param_name: str, transform: Callable) -> None:
+        self.post_processing[param_name] = transform
+
+
 def run_func_with_argv(
     function: Callable[..., ReturnType], argv: List[str]
 ) -> ReturnType:
     parser = _create_parser(function)
     args = parser.parse_args(argv)
-    retval = function(**vars(args))
+    retval = function(**args)
     return retval
 
 
@@ -34,6 +49,7 @@ def register_command(
     function: Union[str, Callable], name: Optional[str] = None
 ) -> None:
     """Register `function` as an available command"""
+    # TODO(joris): Add custom types for arguments
     python_function: Callable
     if isinstance(function, str):
         python_function = _get_function_from_str(function)
@@ -131,21 +147,21 @@ class _Configuration:
                 json.dump(self.config, fp, indent=4, sort_keys=True)
 
 
-def _create_parser(function: Callable) -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description=f"{function.__name__}: {function.__doc__}"
-    )
+def _create_parser(function: Callable) -> _ArgumentParser:
+    parser = _ArgumentParser(description=f"{function.__name__}: {function.__doc__}")
     signature = inspect.signature(function)
 
     for param_name, parameter in signature.parameters.items():
-        required = not _has_default(parameter)
-        default = parameter.default if _has_default(parameter) else None
-        type_ = _get_param_type(parameter.annotation, param_name, function)
+        kwargs = {
+            "required": not _has_default(parameter),
+            "default": parameter.default if _has_default(parameter) else None,
+            # The params above might be overwritten by the function below
+            **_get_type_params(parameter.annotation, param_name, function),
+        }
 
-        # TODO(joris): Deal with List, Tuple
-        parser.add_argument(
-            f"--{param_name}", type=type_, required=required, default=default
-        )
+        parser.add_argument(f"--{param_name}", **kwargs)
+        if kwargs.get("nargs", "+") != "+":  # is_tuple: TODO(joris): refactor
+            parser.add_param_transformer(param_name, tuple)
         # TODO(joris): parse documentation of param for help
 
     return parser
@@ -162,22 +178,52 @@ def _has_default(parameter: inspect.Parameter) -> bool:
     return parameter.default != inspect.Parameter.empty
 
 
-def _get_param_type(annotation: Any, param_name: str, function: Callable) -> Callable:
+def _get_type_params(
+    annotation: Any, param_name: str, function: Callable
+) -> Dict[str, Any]:
     def _fail(message: str) -> None:
         _print_and_quit(
             f"Error processing paramter '{param_name}' "
             f"with type {annotation} of '{function}': {message}"
         )
 
-    annotation_type = type(annotation)
-    if annotation_type is Union:
-        args = annotation.__args__
-        if len(args) == 2 and args[1] is type(None):  # Optional
-            return args[0]
-        else:
-            _fail(f"Unions are not supported")
+    if hasattr(annotation, "__origin__"):
+        origin = annotation.__origin__
+        # TODO(joris): Deal with Tuple
+        if origin is Union:
+            args = annotation.__args__
+            if len(args) == 2 and args[1] is type(None):  # Optional
+                return {
+                    "required": False,
+                    **_get_type_params(args[0], param_name, function),
+                }
+            else:
+                _fail(f"Unions are not supported")
+        elif origin is List:
+            args = annotation.__args__
+            if len(args) == 0:
+                _fail(
+                    "List should be annotated with element type, for instance List[int]"
+                )
+            return {"nargs": "+", "type": args[0]}
+        elif origin is Tuple:
+            args = annotation.__args__
+            if len(args) == 0:
+                _fail(
+                    "Tuple should be annotated with element type, for instance Tuple[int, int]"
+                )
+            if len(set(args)) != 1:
+                _fail(
+                    "auto_cli only supports Tuples where each element is the same type"
+                )
 
-    return annotation
+            return {"nargs": len(args), "type": args[0]}
+
+    if annotation is bool:
+        # Bools are implicitly False by default
+        return {"action": "store_true", "default": False, "required": False}
+
+    return {"type": annotation}
 
 
 def _get_function_from_str(path: str) -> Callable:
