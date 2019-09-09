@@ -1,6 +1,6 @@
 import argparse
 import inspect
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from .utils import _print_and_quit
 
@@ -10,9 +10,8 @@ class ArgumentParser(argparse.ArgumentParser):
         super().__init__(*args, **kwargs)
         self.post_processing: Dict[str, Callable] = {}
 
-    def parse_args(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
-        args = super().parse_args(*args, **kwargs)
-        args_as_dict = vars(args)
+    def parse(self, args: Optional[List[str]] = None) -> Dict[str, Any]:
+        args_as_dict = vars(super().parse_args(args))
         for param_name, transform_func in self.post_processing.items():
             args_as_dict[param_name] = transform_func(args_as_dict[param_name])
         return args_as_dict

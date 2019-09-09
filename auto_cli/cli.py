@@ -16,7 +16,7 @@ def run_func_with_argv(
     function: Callable[..., ReturnType], argv: List[str]
 ) -> ReturnType:
     parser = create_parser(function)
-    args = parser.parse_args(argv)
+    args = parser.parse(argv)
     retval = function(**args)
     return retval
 
@@ -98,7 +98,7 @@ def _command_help() -> str:
     )
 
 
-def _function_help(function) -> str:
+def _function_help(function: Callable) -> str:
     if function.__doc__ is not None:
         return "    " + function.__doc__
     return ""

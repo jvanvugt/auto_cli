@@ -1,6 +1,5 @@
 from setuptools import setup
 
-
 setup(
     name="auto_cli",
     packages=[],

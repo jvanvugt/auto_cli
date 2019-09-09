@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# script/test: Run test suite for application.
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+# Formatting
+black --check auto_cli
+isort -c
+# Type checking
+mypy auto_cli --disallow-untyped-defs --warn-unreachable --warn-redundant-casts --warn-unused-ignores
+# Tests
+pytest -s auto_cli
+
+echo "Done! All tests passed"
