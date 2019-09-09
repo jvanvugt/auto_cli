@@ -34,6 +34,7 @@ def register_command(
 ) -> None:
     """Register `function` as an available command"""
     # TODO(joris): Add custom types for arguments
+    # TODO(joris): Add result formatter option
     python_function: Callable
     if isinstance(function, str):
         python_function = _get_function_from_str(function)
@@ -87,6 +88,7 @@ def _load_app(name: str) -> None:
     """Load app into `REGISTERED_COMMANDS`"""
     with Configuration() as config:
         ac_code = config.get_app_ac_content(name)
+    # TODO(joris): see if we can load this into a variable instead
     exec(ac_code)
 
 
