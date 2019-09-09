@@ -20,3 +20,10 @@ Now, you can call your function from the command-line:
 $ ac my_app get_weather --location Amsterdam
 21 degrees celsius. Sunny all day!
 ```
+
+## Benefits
+- Write your function once, call it from Python code _and_ the command-line
+- Automatically generate argument parsers, no need to duplicate argument names, default values, documentation and types.
+- Automatically print the result of the function to the console, no need to clutter your code with `print` or `log`.
+- Keep your production code free of decorators to describe command-line interfaces.
+- Easily view all the available commands for your app.
