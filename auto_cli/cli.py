@@ -7,6 +7,8 @@ from .configuration import Configuration
 from .parsing import create_parser
 from .utils import _print_and_quit
 
+# In practice, this dict will be overriden by _load_app
+# but it is here to keep the linters happy and for testing
 REGISTERED_COMMANDS: Dict[str, Callable] = {}
 
 ReturnType = TypeVar("ReturnType")
@@ -41,6 +43,7 @@ def register_command(
     else:
         python_function = function
     command_name = name or python_function.__name__
+    # REGISTERED_COMMANDS is magically defined by _load_app
     REGISTERED_COMMANDS[command_name] = python_function
 
 
@@ -52,11 +55,12 @@ def register_app(name: str, location: Optional[Path] = None) -> None:
 
 def run_command(app: str, argv: List[str]) -> None:
     """Run a command in app"""
-    _load_app(app)
+    commands = _load_app(app)
     if len(argv) == 0:
-        _print_and_quit(f"No command given. Available commands:\n{_command_help()}")
+        command_help = _command_help(commands)
+        _print_and_quit(f"No command given. Available commands:\n{command_help}")
     command, *argv = argv
-    function = REGISTERED_COMMANDS[command]
+    function = commands[command]
     run_func_with_argv_and_print(function, argv, command)
 
 
@@ -84,19 +88,24 @@ def _get_function_from_str(path: str) -> Callable:
     return function
 
 
-def _load_app(name: str) -> None:
-    """Load app into `REGISTERED_COMMANDS`"""
+def _load_app(name: str) -> Dict[str, Callable]:
+    """Load the commands registered in auto_cli.py"""
     with Configuration() as config:
         ac_code = config.get_app_ac_content(name)
-    # TODO(joris): see if we can load this into a variable instead
-    exec(ac_code)
+    ac_code = f"""
+import auto_cli
+auto_cli.cli.REGISTERED_COMMANDS = REGISTERED_COMMANDS
+{ac_code}"""
+    registered_commands: Dict[str, Callable] = {}
+    exec(ac_code, {"REGISTERED_COMMANDS": registered_commands})
+    return registered_commands
 
 
-def _command_help() -> str:
-    longest_name = max(map(len, REGISTERED_COMMANDS))
+def _command_help(commands: Dict[str, Callable]) -> str:
+    longest_name = max(map(len, commands))
     return "\n".join(
         f"{name.ljust(longest_name)}{_function_help(function)}"
-        for name, function in REGISTERED_COMMANDS.items()
+        for name, function in commands.items()
     )
 
 
