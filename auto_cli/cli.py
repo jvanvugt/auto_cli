@@ -13,18 +13,18 @@ ReturnType = TypeVar("ReturnType")
 
 
 def run_func_with_argv(
-    function: Callable[..., ReturnType], argv: List[str]
+    function: Callable[..., ReturnType], argv: List[str], command: str
 ) -> ReturnType:
-    parser = create_parser(function)
+    parser = create_parser(function, command)
     args = parser.parse(argv)
     retval = function(**args)
     return retval
 
 
 def run_func_with_argv_and_print(
-    function: Callable[..., ReturnType], argv: List[str]
+    function: Callable[..., ReturnType], argv: List[str], command: str
 ) -> None:
-    result = run_func_with_argv(function, argv)
+    result = run_func_with_argv(function, argv, command)
     if result is not None:
         print(result)
 
@@ -57,7 +57,7 @@ def run_command(app: str, argv: List[str]) -> None:
         _print_and_quit(f"No command given. Available commands:\n{_command_help()}")
     command, *argv = argv
     function = REGISTERED_COMMANDS[command]
-    run_func_with_argv_and_print(function, argv)
+    run_func_with_argv_and_print(function, argv, command)
 
 
 def run() -> None:

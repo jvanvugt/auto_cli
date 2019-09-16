@@ -12,6 +12,6 @@ isort -c
 # Type checking
 mypy auto_cli --disallow-untyped-defs --warn-unreachable --warn-redundant-casts --warn-unused-ignores
 # Tests
-pytest -s auto_cli
+pytest auto_cli
 
 echo "Done! All tests passed"

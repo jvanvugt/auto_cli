@@ -6,6 +6,13 @@ from .utils import _print_and_quit
 
 
 class ArgumentParser(argparse.ArgumentParser):
+    """
+    This class implements some additional functionality on top of
+    Python's standard argparse.ArgumentParser.
+    It returns the parsed parameters as a dictionary and
+    has optional postprocessing of parameters.
+    """
+
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.post_processing: Dict[str, Callable] = {}
@@ -20,11 +27,19 @@ class ArgumentParser(argparse.ArgumentParser):
         self.post_processing[param_name] = transform
 
 
-def create_parser(function: Callable) -> ArgumentParser:
-    parser = ArgumentParser(description=f"{function.__name__}: {function.__doc__}")
+def create_parser(function: Callable, command_name: str) -> ArgumentParser:
+    """Create a parser for the given function"""
+    parser = ArgumentParser(description=f"{command_name}: {function.__doc__}")
     signature = inspect.signature(function)
+    parameters = dict(signature.parameters)
+    argspec = inspect.getfullargspec(function)
 
-    for param_name, parameter in signature.parameters.items():
+    if argspec.varargs is not None:
+        del parameters[argspec.varargs]
+    if argspec.varkw is not None:
+        del parameters[argspec.varkw]
+
+    for param_name, parameter in parameters.items():
         kwargs = {
             "required": not _has_default(parameter),
             "default": parameter.default if _has_default(parameter) else None,
@@ -56,7 +71,6 @@ def _get_type_params(
 
     if hasattr(annotation, "__origin__"):
         origin = annotation.__origin__
-        # TODO(joris): Deal with Tuple
         if origin is Union:
             args = annotation.__args__
             if len(args) == 2 and args[1] is type(None):  # Optional
