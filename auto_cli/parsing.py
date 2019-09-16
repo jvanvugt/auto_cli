@@ -66,8 +66,11 @@ def _get_type_params(
     def _fail(message: str) -> None:
         _print_and_quit(
             f"Error processing paramter '{param_name}' "
-            f"with type {annotation} of '{function}': {message}"
+            f"with type {annotation} of '{function}': {message}."
         )
+
+    if annotation == inspect.Parameter.empty:
+        _fail("Missing annotation")
 
     if hasattr(annotation, "__origin__"):
         origin = annotation.__origin__
