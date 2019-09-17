@@ -2,6 +2,7 @@ import argparse
 import inspect
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+from .types import Command
 from .utils import _print_and_quit
 
 
@@ -27,9 +28,10 @@ class ArgumentParser(argparse.ArgumentParser):
         self.post_processing[param_name] = transform
 
 
-def create_parser(function: Callable, command_name: str) -> ArgumentParser:
-    """Create a parser for the given function"""
-    parser = ArgumentParser(description=f"{command_name}: {function.__doc__}")
+def create_parser(command: Command) -> ArgumentParser:
+    """Create a parser for the given command"""
+    function = command.function
+    parser = ArgumentParser(description=f"{command.name}: {function.__doc__}")
     signature = inspect.signature(function)
     parameters = dict(signature.parameters)
     argspec = inspect.getfullargspec(function)
@@ -39,12 +41,14 @@ def create_parser(function: Callable, command_name: str) -> ArgumentParser:
     if argspec.varkw is not None:
         del parameters[argspec.varkw]
 
+    param_types = command.parameter_types or {}
     for param_name, parameter in parameters.items():
+        annotation = param_types.get(param_name, parameter.annotation)
         kwargs = {
             "required": not _has_default(parameter),
             "default": parameter.default if _has_default(parameter) else None,
             # The params above might be overwritten by the function below
-            **_get_type_params(parameter.annotation, param_name, function),
+            **_get_type_params(annotation, param_name, function),
         }
 
         parser.add_argument(f"--{param_name}", **kwargs)

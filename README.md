@@ -24,7 +24,7 @@ $ ac cli register_app --name weather
 ```
 
 Now, you can call your function from the command-line:
-```
+```bash
 $ ac weather get_weather --location Amsterdam
 21 degrees celsius. Sunny all day in Amsterdam!
 

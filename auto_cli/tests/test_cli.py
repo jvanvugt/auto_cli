@@ -3,13 +3,14 @@ from typing import Any
 import pytest_mock
 
 from auto_cli import cli
+from auto_cli.types import Command
 
 
 def test_run_func_with_argv() -> None:
     def func_to_test(a: int, b: int = 38) -> int:
         return a + b
 
-    result = cli.run_func_with_argv(func_to_test, ["--a", "4"], func_to_test.__name__)
+    result = cli.run_func_with_argv(Command.from_func(func_to_test), ["--a", "4"])
     assert result == 42
 
 
@@ -22,11 +23,9 @@ def test_register_command() -> None:
 
 def test_run_command(mocker: pytest_mock.MockFixture) -> None:
     mocked_cmd = mocker.MagicMock()
+    registered_commands = {"test_cmd": Command.from_func(mocked_cmd, name="test_cmd")}
+    mocker.patch("auto_cli.cli._load_app", return_value=registered_commands)
 
-    def register_func(_: str):
-        cli.REGISTERED_COMMANDS["test_cmd"] = mocked_cmd
-
-    mocker.patch("auto_cli.cli._load_app", return_value={"test_cmd": mocked_cmd})
     cli.run_command("my_app", ["test_cmd"])
     mocked_cmd.assert_called_once()
 
