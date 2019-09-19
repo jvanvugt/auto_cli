@@ -34,6 +34,15 @@ class Configuration:
         self.config["apps"][name] = {"location": str(app_location)}
         self._dirty = True
 
+    def delete_app(self, name: str) -> None:
+        apps = self.config["apps"]
+        if name not in apps:
+            _print_and_quit(
+                f"Unknown app '{name}'. Run `ac cli apps` to see which apps are registered."
+            )
+        del apps[name]
+        self._dirty = True
+
     def get_app_location(self, name: str) -> Path:
         """Get the location of the app called `name`"""
         location = self.config["apps"].get(name)

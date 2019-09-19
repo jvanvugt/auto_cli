@@ -4,6 +4,7 @@ setup(
     name="auto_cli",
     packages=[],
     version="0.1.0",
+    python_requires=">=3.6",
     description="Automatically generate a command-line interface for any Python function",
     author="Joris van Vugt",
     license="MIT",

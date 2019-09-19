@@ -53,6 +53,13 @@ def register_app(name: str, location: Optional[Path] = None) -> None:
         config.register_app(name, location)
 
 
+def delete_app(name: str) -> str:
+    """Delete the app"""
+    with Configuration() as config:
+        config.delete_app(name)
+    return f"Deleted {name}"
+
+
 def run_command(app: str, argv: List[str]) -> None:
     """Run a command in app"""
     commands = _load_app(app)
