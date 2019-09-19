@@ -57,7 +57,13 @@ class Configuration:
         ac_file = location / "auto_cli.py"
         if not ac_file.exists():
             _print_and_quit(f"Could not find auto_cli file {ac_file}. Was it deleted?")
-        return ac_file.read_text()
+        file_content = ac_file.read_text()
+
+        # Already do a dry-run of the file to check for errors
+        code = compile(file_content, str(ac_file), "exec")
+        exec(code)
+
+        return file_content
 
     def get_apps(self) -> List[str]:
         """Get a list of all registered apps"""
