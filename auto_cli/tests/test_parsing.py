@@ -1,6 +1,6 @@
 from typing import List, Tuple
 
-from auto_cli.parsing import create_parser
+from auto_cli.parsing import _parse_function_doc, create_parser
 from auto_cli.types import Command
 
 
@@ -67,3 +67,18 @@ def test_override_param_type() -> None:
     parser = create_parser(command)
     args = parser.parse(["--a", "4", "--b", "5"])
     assert args == {"a": 4, "b": 5}
+
+
+def test_parse_function_doc() -> None:
+    def func_to_test(a: int, b: str) -> int:
+        """This is a function
+        which does some interesting things
+
+        :param int a: the number that is returned
+        :param b: ignored
+        """
+        return a
+
+    docs = _parse_function_doc(func_to_test)
+    assert docs.description == "This is a function which does some interesting things"
+    assert docs.param_docs == {"a": "the number that is returned", "b": "ignored"}
