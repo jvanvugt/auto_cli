@@ -127,7 +127,7 @@ def _parse_function_doc(function: Callable) -> _FunctionDoc:
     """Parse function documentation which adheres to the Sphinx standard
     https://www.sphinx-doc.org/en/master/usage/restructuredtext/domains.html#info-field-lists
     """
-    if not hasattr(function, "__doc__"):
+    if not hasattr(function, "__doc__") or function.__doc__ is None:
         return _FunctionDoc("", {})
 
     doc = function.__doc__

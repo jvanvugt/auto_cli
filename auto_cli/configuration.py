@@ -5,7 +5,9 @@ from typing import Any, List, Optional
 
 from .utils import _print_and_quit
 
-CONFIG_FILE = os.environ.get("AUTO_CLI_CONFIG_FILE", Path("~/.auto_cli").expanduser())
+CONFIG_FILE = Path(
+    os.environ.get("AUTO_CLI_CONFIG_FILE") or Path("~/.auto_cli").expanduser()
+)
 
 
 class Configuration:
