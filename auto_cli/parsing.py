@@ -25,6 +25,9 @@ class ArgumentParser(argparse.ArgumentParser):
             args_as_dict[param_name] = transform_func(args_as_dict[param_name])
         return args_as_dict
 
+    def parse_args(self, args=None, namespace=None):  # type: ignore # match signature
+        raise RuntimeError("Please call `parse` instead.")
+
     def add_param_transformer(self, param_name: str, transform: Callable) -> None:
         self.post_processing[param_name] = transform
 
@@ -33,39 +36,74 @@ def create_parser(command: Command) -> ArgumentParser:
     """Create a parser for the given command"""
     function = command.function
     function_doc = _parse_function_doc(function)
+    parameters = _get_params(function)
+
     parser = ArgumentParser(description=f"{command.name}: {function_doc.description}")
+    param_types = command.parameter_types or {}
+    for param_name, parameter in parameters.items():
+        param_docs = function_doc.param_docs.get(param_name)
+        try:
+            annotation = _get_annotation(parameter, param_name, param_types)
+            _add_arg_for_param(parser, parameter, param_name, annotation, param_docs)
+        except ParameterException as e:
+            _print_and_quit(
+                f"Error processing parameter '{param_name}' of '{command.name}' "
+                f"({function})': {e.args[0]}."
+            )
+
+    return parser
+
+
+class ParameterException(Exception):
+    pass
+
+
+def _get_params(function: Callable) -> Dict[str, inspect.Parameter]:
     signature = inspect.signature(function)
     parameters = dict(signature.parameters)
-    argspec = inspect.getfullargspec(function)
 
+    argspec = inspect.getfullargspec(function)
+    # Remove *args and **kwargs because we don't support them
     if argspec.varargs is not None:
         del parameters[argspec.varargs]
     if argspec.varkw is not None:
         del parameters[argspec.varkw]
+    return parameters
 
-    param_types = command.parameter_types or {}
-    for param_name, parameter in parameters.items():
-        annotation = param_types.get(param_name, parameter.annotation)
-        has_default_value = _has_default(parameter)
-        if annotation == inspect.Parameter.empty and has_default_value:
+
+def _get_annotation(
+    parameter: inspect.Parameter, param_name: str, param_types: Dict[str, Callable]
+) -> Callable:
+    annotation = param_types.get(param_name, parameter.annotation)
+    if annotation == inspect.Parameter.empty:
+        if _has_default(parameter):
             # Deduce the type from the default value
             annotation = type(parameter.default)
+        else:
+            raise ParameterException(
+                "Parameter is does not have an annotation or default value"
+            )
 
-        kwargs = {
-            "required": not has_default_value,
-            "default": parameter.default if has_default_value else None,
-            # The params above might be overwritten by the function below
-            **_get_type_params(annotation, param_name, function),
-        }
+    return annotation
 
-        parser.add_argument(
-            f"--{param_name}", help=function_doc.param_docs.get(param_name), **kwargs
-        )
-        if kwargs.get("nargs", "+") != "+":  # is_tuple: TODO(joris): refactor
-            parser.add_param_transformer(param_name, tuple)
-        # TODO(joris): parse documentation of param for help
 
-    return parser
+def _add_arg_for_param(
+    parser: ArgumentParser,
+    parameter: inspect.Parameter,
+    param_name: str,
+    annotation: Callable,
+    param_docs: Optional[str],
+) -> None:
+    kwargs = {
+        "required": not _has_default(parameter),
+        "default": parameter.default if _has_default(parameter) else None,
+        # The params above might be overwritten by the function below
+        **_get_type_params(annotation, param_name),
+    }
+
+    parser.add_argument(f"--{param_name}", help=param_docs, **kwargs)
+    if kwargs.get("nargs", "+") != "+":  # is_tuple: TODO(joris): refactor
+        parser.add_param_transformer(param_name, tuple)
 
 
 def _has_default(parameter: inspect.Parameter) -> bool:
@@ -73,45 +111,31 @@ def _has_default(parameter: inspect.Parameter) -> bool:
     return parameter.default != inspect.Parameter.empty
 
 
-def _get_type_params(
-    annotation: Any, param_name: str, function: Callable
-) -> Dict[str, Any]:
-    def _fail(message: str) -> None:
-        _print_and_quit(
-            f"Error processing paramter '{param_name}' "
-            f"with type {annotation} of '{function}': {message}."
-        )
-
-    if annotation == inspect.Parameter.empty:
-        _fail("Missing annotation")
-
+def _get_type_params(annotation: Any, param_name: str) -> Dict[str, Any]:
     if hasattr(annotation, "__origin__"):
         origin = annotation.__origin__
         if origin is Union:
             args = annotation.__args__
             if len(args) == 2 and args[1] is type(None):  # Optional
-                return {
-                    "required": False,
-                    **_get_type_params(args[0], param_name, function),
-                }
+                return {"required": False, **_get_type_params(args[0], param_name)}
             else:
-                _fail(f"Unions are not supported")
+                ParameterException(f"Unions are not supported")
         elif origin is List:
             args = annotation.__args__
-            if len(args) == 0:
-                _fail(
-                    "List should be annotated with element type, for instance List[int]"
+            if len(args) != 1:
+                raise ParameterException(
+                    "List should be annotated with one element type, for instance `List[int]`"
                 )
             return {"nargs": "+", "type": args[0]}
         elif origin is Tuple:
             args = annotation.__args__
             if len(args) == 0:
-                _fail(
+                raise ParameterException(
                     "Tuple should be annotated with element type, for instance Tuple[int, int]"
                 )
             if len(set(args)) != 1:
-                _fail(
-                    "auto_cli only supports Tuples where each element is the same type"
+                raise ParameterException(
+                    "auto_cli only supports Tuples where each element is of the same type"
                 )
 
             return {"nargs": len(args), "type": args[0]}

@@ -1,5 +1,7 @@
 from typing import List, Tuple
 
+import pytest
+
 from auto_cli.parsing import _parse_function_doc, create_parser
 from auto_cli.types import Command
 
@@ -91,3 +93,11 @@ def test_parse_function_doc() -> None:
     docs = _parse_function_doc(func_to_test)
     assert docs.description == "This is a function which does some interesting things"
     assert docs.param_docs == {"a": "the number that is returned", "b": "ignored"}
+
+
+def test_parse_unsupported_type() -> None:
+    def func_to_test(a: Tuple[int, float]) -> float:
+        return sum(a)
+
+    with pytest.raises(SystemExit):
+        create_parser(Command.from_func(func_to_test))
