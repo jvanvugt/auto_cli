@@ -59,6 +59,15 @@ def test_create_parser_tuple() -> None:
     assert args == {"a": nums, "b": False}
 
 
+def test_type_from_default() -> None:
+    def func_to_test(a=4) -> int:
+        return a
+
+    parser = create_parser(Command.from_func(func_to_test))
+    args = parser.parse(["--a", "4"])
+    assert args == {"a": 4}
+
+
 def test_override_param_type() -> None:
     def func_to_test(a: int, b):
         return a + b

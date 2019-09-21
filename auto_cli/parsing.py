@@ -46,9 +46,14 @@ def create_parser(command: Command) -> ArgumentParser:
     param_types = command.parameter_types or {}
     for param_name, parameter in parameters.items():
         annotation = param_types.get(param_name, parameter.annotation)
+        has_default_value = _has_default(parameter)
+        if annotation == inspect.Parameter.empty and has_default_value:
+            # Deduce the type from the default value
+            annotation = type(parameter.default)
+
         kwargs = {
-            "required": not _has_default(parameter),
-            "default": parameter.default if _has_default(parameter) else None,
+            "required": not has_default_value,
+            "default": parameter.default if has_default_value else None,
             # The params above might be overwritten by the function below
             **_get_type_params(annotation, param_name, function),
         }
