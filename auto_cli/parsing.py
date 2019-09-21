@@ -136,7 +136,7 @@ def _parse_function_doc(function: Callable) -> _FunctionDoc:
         # the description of the function
         return _FunctionDoc(doc, {})
 
-    # Now that we now doc conforms to our standard, we can parse out the
+    # Now that we know doc conforms to our standard, we can extract the
     # parameter descriptions
 
     params_docs = {}
