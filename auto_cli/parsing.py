@@ -1,6 +1,5 @@
 import argparse
 import inspect
-import re
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple, Union
 
 from .types import Command
@@ -35,7 +34,7 @@ class ArgumentParser(argparse.ArgumentParser):
 def create_parser(command: Command) -> ArgumentParser:
     """Create a parser for the given command"""
     function = command.function
-    function_doc = _parse_function_doc(function)
+    function_doc = command.parse_function_doc()
     parameters = _get_params(function)
 
     parser = ArgumentParser(description=f"{command.name}: {function_doc.description}")
@@ -153,42 +152,3 @@ def _get_type_params(annotation: Any, param_name: str) -> Dict[str, Any]:
         return {"action": "store_true", "default": False, "required": False}
 
     return {"type": annotation}
-
-
-class _FunctionDoc(NamedTuple):
-    description: str
-    param_docs: Dict[str, str]
-
-
-def _parse_function_doc(function: Callable) -> _FunctionDoc:
-    """Parse function documentation which adheres to the Sphinx standard
-    https://www.sphinx-doc.org/en/master/usage/restructuredtext/domains.html#info-field-lists
-    """
-    if not hasattr(function, "__doc__") or function.__doc__ is None:
-        return _FunctionDoc("", {})
-
-    doc = function.__doc__
-    if not ":param" in doc:
-        # Doesn't conform to our standard, so the whole __doc__ is just
-        # the description of the function
-        return _FunctionDoc(doc, {})
-
-    # Now that we know doc conforms to our standard, we can extract the
-    # parameter descriptions
-
-    params_docs = {}
-    for line in doc.splitlines():
-        line = line.strip()
-        if line.startswith(":param"):
-            line = line.lstrip(":param")
-            before, _, description = line.partition(":")
-            param_name = before.strip().split(" ")[-1]
-            params_docs[param_name] = description.strip()
-
-    fn_description, _, _ = doc.partition(":param")
-    fn_description = _normalize_whitespace(fn_description.strip())
-    return _FunctionDoc(fn_description, params_docs)
-
-
-def _normalize_whitespace(text: str) -> str:
-    return re.sub(r"\s+", " ", text)

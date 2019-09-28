@@ -2,7 +2,7 @@ from typing import List, Tuple
 
 import pytest
 
-from auto_cli.parsing import _parse_function_doc, create_parser
+from auto_cli.parsing import create_parser
 from auto_cli.types import Command
 
 
@@ -90,7 +90,8 @@ def test_parse_function_doc() -> None:
         """
         return a
 
-    docs = _parse_function_doc(func_to_test)
+    command = Command.from_func(func_to_test)
+    docs = command.parse_function_doc()
     assert docs.description == "This is a function which does some interesting things"
     assert docs.param_docs == {"a": "the number that is returned", "b": "ignored"}
 

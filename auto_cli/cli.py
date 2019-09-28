@@ -36,7 +36,19 @@ def register_command(
     return_type: Optional[Callable[[Any], Any]] = None,
     short_names: Optional[Dict[str, str]] = None,
 ) -> None:
-    """Register `function` as an available command"""
+    """Register ``function`` as an available command
+
+    :param function: the function register
+    :param name: Override the name of the function in the cli
+                 Defaults to ``function.__name__``
+    :param parameter_types: Override the type of an argument
+                            Dictionary of name of the parameter to type
+    :param return_type: Override the return_type of the function.
+                        Will be called before printing the result to stdout.
+    :param short_names: Optionally add a short version of the parameter.
+                        Dictionary of name of the parameter to shorter name.
+                        For instance ``{"very_long_name": "-l"}``.
+    """
     python_function: Callable
     if isinstance(function, str):
         python_function = _get_function_from_str(function)
@@ -51,13 +63,21 @@ def register_command(
 
 
 def register_app(name: str, location: Optional[Path] = None) -> None:
-    """Register an app with auto_cli"""
+    """Register an app with auto_cli
+
+    :param name: Name of the app
+    :param location: Parent directory of the auto_cli.py file.
+                     Defaults to the current working directory.
+    """
     with Configuration() as config:
         config.register_app(name, location)
 
 
 def delete_app(name: str) -> str:
-    """Delete the app"""
+    """Delete the app
+
+    :param name: Name of the app
+    """
     with Configuration() as config:
         config.delete_app(name)
     return f"Deleted {name}"
@@ -68,7 +88,9 @@ def run_command(app: str, argv: List[str]) -> None:
     commands = _load_app(app)
     if len(argv) == 0:
         command_help = _command_help(commands)
-        _print_and_quit(f"No command given. Available commands:\n{command_help}")
+        _print_and_quit(
+            f"No command given. Available commands:\n{command_help}", is_error=False
+        )
     command_name, *argv = argv
     command = commands[command_name]
     run_func_with_argv_and_print(command, argv)
@@ -121,14 +143,11 @@ def _load_app(name: str) -> Dict[str, Command]:
 
 
 def _command_help(commands: Dict[str, Command]) -> str:
-    longest_name = max(map(len, commands))
+    pad_left = max(map(len, commands)) + 4
+    function_docs = {
+        name: command.parse_function_doc() for name, command in commands.items()
+    }
     return "\n".join(
-        f"{name.ljust(longest_name)}{_function_help(command.function)}"
+        f"{name.ljust(pad_left)}{function_docs[name].description}"
         for name, command in commands.items()
     )
-
-
-def _function_help(function: Callable) -> str:
-    if function.__doc__ is not None:
-        return "    " + function.__doc__
-    return ""
