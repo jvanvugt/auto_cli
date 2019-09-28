@@ -34,6 +34,7 @@ def register_command(
     name: Optional[str] = None,
     parameter_types: Optional[Dict[str, Callable]] = None,
     return_type: Optional[Callable[[Any], Any]] = None,
+    short_names: Optional[Dict[str, str]] = None,
 ) -> None:
     """Register `function` as an available command"""
     python_function: Callable
@@ -42,7 +43,9 @@ def register_command(
     else:
         python_function = function
     command_name = name or python_function.__name__
-    command = Command(command_name, python_function, parameter_types, return_type)
+    command = Command(
+        command_name, python_function, parameter_types, return_type, short_names
+    )
     # REGISTERED_COMMANDS is magically defined by _load_app
     REGISTERED_COMMANDS[command_name] = command
 

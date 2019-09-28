@@ -40,11 +40,15 @@ def create_parser(command: Command) -> ArgumentParser:
 
     parser = ArgumentParser(description=f"{command.name}: {function_doc.description}")
     param_types = command.parameter_types or {}
+    short_names = command.short_names or {}
     for param_name, parameter in parameters.items():
         param_docs = function_doc.param_docs.get(param_name)
+        short_name = short_names.get(param_name)
         try:
             annotation = _get_annotation(parameter, param_name, param_types)
-            _add_arg_for_param(parser, parameter, param_name, annotation, param_docs)
+            _add_arg_for_param(
+                parser, parameter, param_name, annotation, param_docs, short_name
+            )
         except ParameterException as e:
             _print_and_quit(
                 f"Error processing parameter '{param_name}' of '{command.name}' "
@@ -93,6 +97,7 @@ def _add_arg_for_param(
     param_name: str,
     annotation: Callable,
     param_docs: Optional[str],
+    short_name: Optional[str],
 ) -> None:
     kwargs = {
         "required": not _has_default(parameter),
@@ -101,7 +106,10 @@ def _add_arg_for_param(
         **_get_type_params(annotation, param_name),
     }
 
-    parser.add_argument(f"--{param_name}", help=param_docs, **kwargs)
+    names = [f"--{param_name}"]
+    if short_name:
+        names.append(short_name)
+    parser.add_argument(*names, help=param_docs, **kwargs)
     if kwargs.get("nargs", "+") != "+":  # is_tuple: TODO(joris): refactor
         parser.add_param_transformer(param_name, tuple)
 

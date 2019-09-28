@@ -74,7 +74,7 @@ def test_override_param_type() -> None:
     def func_to_test(a: int, b):
         return a + b
 
-    command = Command("cmd_name", func_to_test, {"b": int}, None)
+    command = Command("cmd_name", func_to_test, {"b": int})
     parser = create_parser(command)
     args = parser.parse(["--a", "4", "--b", "5"])
     assert args == {"a": 4, "b": 5}
@@ -95,9 +95,20 @@ def test_parse_function_doc() -> None:
     assert docs.param_docs == {"a": "the number that is returned", "b": "ignored"}
 
 
-def test_parse_unsupported_type() -> None:
+def test_create_parser_unsupported_type() -> None:
     def func_to_test(a: Tuple[int, float]) -> float:
         return sum(a)
 
     with pytest.raises(SystemExit):
         create_parser(Command.from_func(func_to_test))
+
+
+def test_create_parser_short_opts() -> None:
+    def func_to_test(long_name: int) -> int:
+        return long_name
+
+    command = Command.from_func(func_to_test)
+    command = command._replace(short_names={"long_name": "-l"})
+    parser = create_parser(command)
+    args = parser.parse(["-l", "4"])
+    assert args == {"long_name": 4}
