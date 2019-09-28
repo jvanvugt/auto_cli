@@ -50,7 +50,6 @@ class Configuration:
         """Get the location of the app called `name`"""
         location = self.config["apps"].get(name)
         if location is None:
-            # TODO(joris): "Did you mean?", "You can register..."
             _print_and_quit(f"Unknown app '{name}'.")
         return Path(location)
 

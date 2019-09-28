@@ -113,3 +113,14 @@ def test_create_parser_short_opts() -> None:
     parser = create_parser(command)
     args = parser.parse(["-l", "4"])
     assert args == {"long_name": 4}
+
+
+def test_create_parser_tuple_var_length() -> None:
+    def func_to_test(a: Tuple[int, ...]) -> int:
+        return sum(a)
+
+    command = Command.from_func(func_to_test)
+    parser = create_parser(command)
+    nums = (1, 2, 3)
+    args = parser.parse(["--a"] + list(map(str, nums)))
+    assert args == {"a": nums}

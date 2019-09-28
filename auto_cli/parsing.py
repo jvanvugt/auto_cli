@@ -109,7 +109,7 @@ def _add_arg_for_param(
     if short_name:
         names.append(short_name)
     parser.add_argument(*names, help=param_docs, **kwargs)
-    if kwargs.get("nargs", "+") != "+":  # is_tuple: TODO(joris): refactor
+    if _is_typing_type(parameter.annotation, Tuple):
         parser.add_param_transformer(param_name, tuple)
 
 
@@ -119,36 +119,41 @@ def _has_default(parameter: inspect.Parameter) -> bool:
 
 
 def _get_type_params(annotation: Any, param_name: str) -> Dict[str, Any]:
-    if hasattr(annotation, "__origin__"):
-        origin = annotation.__origin__
-        if origin is Union:
-            args = annotation.__args__
-            if len(args) == 2 and args[1] is type(None):  # Optional
-                return {"required": False, **_get_type_params(args[0], param_name)}
-            else:
-                ParameterException(f"Unions are not supported")
-        elif origin is List:
-            args = annotation.__args__
-            if len(args) != 1:
-                raise ParameterException(
-                    "List should be annotated with one element type, for instance `List[int]`"
-                )
+    if _is_typing_type(annotation, Union):
+        args = annotation.__args__
+        if len(args) == 2 and args[1] is type(None):  # Optional
+            return {"required": False, **_get_type_params(args[0], param_name)}
+        else:
+            ParameterException(f"Unions are not supported")
+    elif _is_typing_type(annotation, List):
+        args = annotation.__args__
+        if len(args) != 1:
+            raise ParameterException(
+                "List should be annotated with one element type, for instance `List[int]`"
+            )
+        return {"nargs": "+", "type": args[0]}
+    elif _is_typing_type(annotation, Tuple):
+        args = annotation.__args__
+        if len(args) == 0:
+            raise ParameterException(
+                "Tuple should be annotated with element type, for instance Tuple[int, int]"
+            )
+        if len(args) == 2 and args[1] is Ellipsis:
             return {"nargs": "+", "type": args[0]}
-        elif origin is Tuple:
-            args = annotation.__args__
-            if len(args) == 0:
-                raise ParameterException(
-                    "Tuple should be annotated with element type, for instance Tuple[int, int]"
-                )
-            if len(set(args)) != 1:
-                raise ParameterException(
-                    "auto_cli only supports Tuples where each element is of the same type"
-                )
-
-            return {"nargs": len(args), "type": args[0]}
-
-    if annotation is bool:
+        if len(set(args)) != 1:
+            raise ParameterException(
+                "auto_cli only supports Tuples where each element is of the same type"
+            )
+        return {"nargs": len(args), "type": args[0]}
+    elif annotation is bool:
         # Bools are implicitly False by default
         return {"action": "store_true", "default": False, "required": False}
 
     return {"type": annotation}
+
+
+def _is_typing_type(annotation: Any, type_: Any) -> bool:
+    origin = getattr(annotation, "__origin__", None)
+    if origin is None:
+        return False
+    return origin is type_
