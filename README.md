@@ -1,6 +1,7 @@
 # auto_cli
 
 [![CircleCI](https://circleci.com/gh/jvanvugt/auto_cli.svg?style=svg)](https://circleci.com/gh/jvanvugt/auto_cli)
+[![Documentation Status](https://readthedocs.org/projects/auto-cli/badge/?version=latest)](https://auto-cli.readthedocs.io/en/latest/?badge=latest)
 
 `auto_cli` is a tool for calling Python functions directly from the command-line, without the need for writing argument parsers. Instead, the argument parser is automatically generated from the annotation of the function, including default arguments and types. When you use `auto_cli`, you can still use your Python functions from code without any changes. In fact, you can use `auto_cli` to generate a CLI for functions in a stand-alone script, or for an external library, as long as the functions have type annotations.
 
