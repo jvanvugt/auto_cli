@@ -1,8 +1,7 @@
-from setuptools import setup
+from setuptools import find_packages, setup
 
 setup(
     name="auto_cli",
-    packages=[],
     version="0.1.0",
     python_requires=">=3.6",
     description="Automatically generate a command-line interface for any Python function",
@@ -13,4 +12,5 @@ setup(
     keywords=["cli", "command", "line", "interface"],
     classifiers=[],
     entry_points={"console_scripts": ["ac=auto_cli.cli:run"]},
+    packages=find_packages(),
 )
