@@ -36,15 +36,16 @@ def register_command(
     return_type: Optional[Callable[[Any], Any]] = None,
     short_names: Optional[Dict[str, str]] = None,
 ) -> None:
-    """Register ``function`` as an available command
+    """Register ``function`` as an available command.
 
-    :param function: the function register
-    :param name: Override the name of the function in the cli
+    :param function: the function to register.
+    :param name: Override the name of the function in the cli.
                  Defaults to ``function.__name__``
-    :param parameter_types: Override the type of an argument
-                            Dictionary of name of the parameter to type
-    :param return_type: Override the return_type of the function.
-                        Will be called before printing the result to stdout.
+    :param parameter_types: Override the type of an argument.
+                            Dictionary of name of the parameter to type.
+    :param return_type: Override the return type of the function.
+                        Will be called with the return value of function before
+                        it is printed to stdout.
     :param short_names: Optionally add a short version of the parameter.
                         Dictionary of name of the parameter to shorter name.
                         For instance ``{"very_long_name": "-l"}``.
